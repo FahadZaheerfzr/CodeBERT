@@ -27,7 +27,7 @@ import pickle
 import torch
 import json
 import random
-import logging
+#import logging
 import argparse
 import numpy as np
 from io import open
@@ -40,10 +40,6 @@ from torch.utils.data.distributed import DistributedSampler
 
 from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
               RobertaConfig, RobertaModel, RobertaTokenizer)
-logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt = '%m/%d/%Y %H:%M:%S',
-                    level = logging.INFO)
-logger = logging.getLogger(__name__)
 
 class Example(object):
     """A single training/test example."""
@@ -107,14 +103,14 @@ def convert_examples_to_features(examples, tokenizer, args,stage=None):
    
         if example_index < 5:
             if stage=='train':
-                logger.info("*** Example ***")
-                logger.info("idx: {}".format(example.idx))
+                print("*** Example ***")
+                print("idx: {}".format(example.idx))
 
-                logger.info("source_tokens: {}".format([x.replace('\u0120','_') for x in source_tokens]))
-                logger.info("source_ids: {}".format(' '.join(map(str, source_ids))))
+                print("source_tokens: {}".format([x.replace('\u0120','_') for x in source_tokens]))
+                print("source_ids: {}".format(' '.join(map(str, source_ids))))
                 
-                logger.info("target_tokens: {}".format([x.replace('\u0120','_') for x in target_tokens]))
-                logger.info("target_ids: {}".format(' '.join(map(str, target_ids))))
+                print("target_tokens: {}".format([x.replace('\u0120','_') for x in target_tokens]))
+                print("target_ids: {}".format(' '.join(map(str, target_ids))))
        
         features.append(
             InputFeatures(
@@ -190,13 +186,12 @@ def main():
     # print arguments
     args = parser.parse_args()
     # set log
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt='%m/%d/%Y %H:%M:%S',level=logging.INFO )
+
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.n_gpu = torch.cuda.device_count()
     args.device = device
-    logger.info("device: %s, n_gpu: %s",device, args.n_gpu)
+    print("device: {}, n_gpu: {}".format(device, args.n_gpu))
     
     # Set seed
     set_seed(args.seed)
@@ -216,7 +211,7 @@ def main():
                   beam_size=args.beam_size,max_length=args.max_target_length,
                   sos_id=tokenizer.convert_tokens_to_ids(["<mask0>"])[0],eos_id=tokenizer.sep_token_id)
     
-    logger.info("Training/evaluation parameters %s", args)
+    print("Training/evaluation parameters {}".format(args))
     model.to(args.device)   
     
     if args.n_gpu > 1:
@@ -247,10 +242,10 @@ def main():
                                                     num_training_steps=len(train_dataloader)*args.num_train_epochs)
     
         #Start training
-        logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", len(train_examples))
-        logger.info("  Batch size = %d", args.train_batch_size * args.gradient_accumulation_steps)
-        logger.info("  Num epoch = %d", args.num_train_epochs)
+        print("***** Running training *****")
+        print("  Num examples = ", len(train_examples))
+        print("  Batch size = ", args.train_batch_size * args.gradient_accumulation_steps)
+        print("  Num epoch = ", args.num_train_epochs)
         
 
         model.train()
@@ -274,7 +269,7 @@ def main():
                     optimizer.zero_grad()
                     scheduler.step()
                     if len(losses) // args.gradient_accumulation_steps % 100 == 0:
-                        logger.info("epoch {} step {} loss {}".format(epoch,
+                        print("epoch {} step {} loss {}".format(epoch,
                                                      len(losses)//args.gradient_accumulation_steps,
                                                      round(np.mean(losses[-100*args.gradient_accumulation_steps:]),4)))
             if args.do_eval:
@@ -291,9 +286,9 @@ def main():
                 eval_sampler = SequentialSampler(eval_data)
                 eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
-                logger.info("\n***** Running evaluation *****")
-                logger.info("  Num examples = %d", len(eval_examples))
-                logger.info("  Batch size = %d", args.eval_batch_size)
+                print("\n***** Running evaluation *****")
+                print("  Num examples = ", len(eval_examples))
+                print("  Batch size = ", args.eval_batch_size)
 
                 #Start Evaling model
                 model.eval()
@@ -311,8 +306,8 @@ def main():
                 eval_loss = eval_loss / tokens_num
                 result = {'eval_ppl': round(np.exp(eval_loss),5)}
                 for key in sorted(result.keys()):
-                    logger.info("  %s = %s", key, str(result[key]))
-                logger.info("  "+"*"*20)   
+                    print("  {} = {}".format(key, str(result[key])))
+                print("  "+"*"*20)   
 
                 #Calculate bleu  
                 if 'dev_bleu' in dev_dataset:
@@ -354,13 +349,13 @@ def main():
                         EM.append(ref.split()==gold.target.split())   
                         
                 dev_bleu = _bleu(args.output_dir+"/dev.output", args.output_dir+"/dev.gold") 
-                logger.info("  %s = %s "%("bleu-4",str(dev_bleu)))
-                logger.info("  %s = %s "%("EM",str(round(np.mean(EM)*100,2))))
-                logger.info("  "+"*"*20)    
+                print("  {} = {} ".format("bleu-4",str(dev_bleu)))
+                print("  {} = {} ".format("EM",str(round(np.mean(EM)*100,2))))
+                print("  "+"*"*20)    
                 dev_score = dev_bleu+round(np.mean(EM)*100,2)
                 if dev_score>best_score:
-                    logger.info("  Best score:%s",dev_score)
-                    logger.info("  "+"*"*20)
+                    print("  Best score: ",dev_score)
+                    print("  "+"*"*20)
                     best_score=dev_score
                     # Save best checkpoint for best bleu
                     output_dir = os.path.join(args.output_dir, 'checkpoint-best-score')
