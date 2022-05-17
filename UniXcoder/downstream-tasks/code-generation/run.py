@@ -211,6 +211,10 @@ def main():
                   beam_size=args.beam_size,max_length=args.max_target_length,
                   sos_id=tokenizer.convert_tokens_to_ids(["<mask0>"])[0],eos_id=tokenizer.sep_token_id)
     
+    path = "../input/codegen/pytorch_model.bin"
+    ckpt = torch.load(path, map_location=args.device)
+    model.load_state_dict(ckpt)
+
     print("Training/evaluation parameters {}".format(args))
     model.to(args.device)   
     
@@ -410,5 +414,3 @@ def main():
                 
 if __name__ == "__main__":
     main()
-
-
